@@ -1,0 +1,396 @@
+---
+title: "Algoritmo EM"
+author: "Tamar Rojas Castillo"
+format: 
+  revealjs:
+    incremental: true 
+    scrollable: true
+    logo: Logo Snoopy.png
+---
+
+## Preliminares {.smaller}
+
+Supongamos que tenemos la Muestra 1 y la Muestra 2 cada una proveniente de una Distribución Normal $N(1,1)$ y $N(\mu,1)$ respectivamente
+
+::: columns
+::: {.column width="50%"}
+$Muestra$ $1$ $=$ $(1, 2, x)$
+
+-   Son extracciones independientes
+
+<!-- -->
+
+-   $x$ representa a un dato faltante
+
+<!-- -->
+
+-   ¿Cual es la mejor suposición sobre el valor de x?
+
+    -   El valor más probable de extraer de una $N(1,1)$ es $1$
+
+    -   $x$ $=$ $1$
+:::
+
+::: {.column width="50%"}
+$Muestra$ $2$ $=$ $(0,1,2)$
+
+-   Todos los datos estan presentes
+
+-   $\mu$ representa a un parámetro desconocido
+
+-   ¿Cual es el valor del parámetro que originó estos datos?
+
+    -   Debido a que tenemos todos los datos de la muestra podemos estimar su valor con la media aritmética
+
+    -   $\mu$ $=$ $1$
+:::
+:::
+
+## ¿Que fué primero, el huevo o la gallina? {.smaller}
+
+::: panel-tabset
+## Problemática
+
+Supongamos que tenemos la siguiente muestra proveniente de una Distribución Normal $N(\mu,1)$ con una $Muestra$ $=$ $(1,2,x)$
+
+-   ¿Cual es la mejor suposicion para los valores de $($$x$, $\mu$ $)$ ?
+
+    -   Necesito uno para poder obtener la estimación del otro
+
+-   Caracteristicas:
+
+    -   Variables latentes (faltantes que se estiman a partir de otras)
+
+    -   Parámetros desconocidos
+
+    -   observaciones en la muestra
+
+-   ¿Cual podria ser entonces un primer acercamiento a su resolucion?
+
+    -¿Método de la transformada inversa?
+
+## Espíritu del algoritmo
+
+Supongamos un valor inicial y arbitrario para un $\mu_{0}$ $=$ $0$ (es tambien valido partir desde un valor para $x$)
+
+considerando $N(\mu,1)$ y $Muestra$ $=$ $(1,2,x)$
+
+$\mu_{0}$ $=$ $0$ $\rightarrow$ $x_{0}$ $=$ $0$ (ya que es el más probable de extraer)
+
+Luego si $x_{0}$ $=$ $0$ $\rightarrow$ $\mu_{1}$ $=$ $1$ $\rightarrow$ $x_{1}$ $=$ $1$ $\rightarrow$ $\mu_{2}$ $=$ $4/3$
+
+$\vdots$
+
+$\mu$ $=$ $\frac{1+2+x}{3}$ $\rightarrow$ $\mu$ $=$ $1.5$ $y$ $x=1.5$
+
+## Convergencia Empírica {.scrollable}
+
+``` r
+set.seed(0)
+muestra <- c(1, 2, NA)  # Donde NA representa el valor desconocido de x
+mu <- 0  # mu_0 inicial
+
+# Función para actualizar mu y x iterativamente
+Iteracion = function(muestra, max_iter = 20) {
+  for (iter in 1:max_iter) { #funcion iter muy util :O
+    # Actualizar el valor de x basado en el valor actual de mu 
+    muestra[3] = mu  # Como el valor más probable es mu, asignamos x = mu
+    
+    # Calcular la nueva media mu basado en la muestra
+    mu_nueva = mean(muestra)
+    
+    # Cat sirve para mostrar en ese orden
+    cat("Iteración:", iter, "x:", muestra[3],"mu:", mu_nueva, "\n")
+    
+    # Actualizar el valor de mu para la siguiente iteración
+    mu <- mu_nueva
+  }
+  return(list(mu = mu, x = muestra[3]))
+}
+
+
+resultado = Iteracion(muestra)
+
+# Mostrar el resultado final de mu y x
+cat("Resultado final: x =", resultado$x, "mu =", resultado$mu, "\n")
+```
+
+```{r}
+
+muestra <- c(1, 2, NA)  # Donde NA representa el valor desconocido de x
+mu <- 0  # mu_0 inicial
+
+# Función para actualizar mu y x iterativamente
+Iteracion = function(muestra, max_iter = 20) {
+  for (iter in 1:max_iter) { #funcion iter muy util :O
+    # Actualizar el valor de x basado en el valor actual de mu 
+    muestra[3] = mu  # Como el valor más probable es mu, asignamos x = mu
+    
+    # Calcular la nueva media mu basado en la muestra
+    mu_nueva = mean(muestra)
+    
+    # Cat sirve para mostrar en ese orden
+    cat("Iteración:", iter, "x:", muestra[3],"mu:", mu_nueva, "\n")
+    
+    # Actualizar el valor de mu para la siguiente iteración
+    mu <- mu_nueva
+  }
+  return(list(mu = mu, x = muestra[3]))
+}
+
+
+resultado = Iteracion(muestra)
+
+# Mostrar el resultado final de mu y x
+cat("Resultado final: x =", resultado$x, "mu =", resultado$mu, "\n")
+```
+:::
+
+## ¿Y si el algoritmo son los amigos que hicimos en el camino? {.smaller}
+
+::: panel-tabset
+## Pasos del algoritmo
+
+-   **Paso 1: Inicialización**
+
+    -   $\mu_{0}$
+
+-   ***Paso 2: Expectation step (E step)***
+
+    -   Se calcula la esperanza condicional de la función objetivo, que generalmente es una función de log-verosimilitud. La idea es encontrar una estimación de los parámetros del modelo dado lo que se conoce (los datos observados) y dado un conjunto de valores actuales para los parámetros.
+
+    -   La idea principal es utilizar la esperanza condicional para “completar” los datos faltantes de manera probabilística, lo que permite estimar los parámetros del modelo de manera más efectiva.
+
+-   ***Paso 3: Maximization step (M step)***
+
+    -   Se maximiza la esperanza condicional con respecto al parámetro objetivo. Se actualizan las estimaciones y se repiten iterativamente los pasos E y M hasta que el algoritmo converge según algún criterio.
+
+## Matemática
+
+-   $P(x|\mu)\sim N(\mu,1)$
+
+-   $\mathcal{L}(x,1,2|\mu)$ $=$ $P(x|\mu)\cdot P(1|\mu)\cdot P(2|\mu)$
+
+    $\vdots$
+
+    $log(P(x|\mu))$ + $log(P(1|\mu))$ + $log(P(2|\mu))$
+
+-   $E(log(\mathcal{L}(x,1,2|\mu))$ $=$ $\int_{x}^{} P(x|\mu_{0})\cdot log(\mathcal{L}(x,1,2|\mu) dx$
+
+-   teniendo $\mu_{1}$ pasamos al paso M que busca maximizar la función anterior
+
+    $arg$ $max$ $E(log(\mathcal{L}(x,1,2|\mu))$
+:::
+
+## Ejemplo 🐹 {.smaller}
+
+``` r
+set.seed(0) 
+
+# Generar datos con valores faltantes o latentes
+datos = rnorm(200, mean = 5, sd = 1) 
+datos[160:200] <- NA #Aqui le asigno los NA
+
+# Variables para datos observados y faltantes
+datos_observados <- datos[!is.na(datos)] # Datos observados (sin NA), el "!" es la negación lógica
+datos_faltantes <- datos[is.na(datos)] # Datos faltantes (NA)
+
+# Inicialización de valores
+num_observados <- length(datos_observados) # Número de observaciones disponibles (basicamente es un subconjunto)
+media_inicial <- mean(datos_observados) # Media de los datos observados
+varianza_inicial <- var(datos_observados) * (num_observados - 1) / num_observados # Varianza ajustada
+
+
+
+# Función EM para datos normales
+em_norm <- function(datos, media_inicial, varianza_inicial) {
+  datos_observados <- datos[!is.na(datos)]  # Valores observados
+  num_total <- length(datos)  # Longitud total de datos
+  num_observados <- length(datos_observados)  # Número de observaciones disponibles
+  
+  # Función para calcular la log-verosimilitud
+  log_verosimilitud <- function(y, mu, sigma2) {
+    -0.5 * length(y) * log(2 * pi * sigma2) - 0.5 * sum((y - mu)^2) / sigma2
+  }
+  
+  # Calcular log-verosimilitud con los valores iniciales
+  log_verosimilitud_anterior <- log_verosimilitud(datos_observados, media_inicial, varianza_inicial)
+  
+  
+  
+#Esta es la iteración del Algoritmo
+  repeat {
+    # E-Step: Esperanza condicional
+    suma_esperada <- sum(datos_observados) + (num_total - num_observados) * media_inicial
+    suma_cuadrados_esperada <- sum(datos_observados^2) + (num_total - num_observados) * (media_inicial^2 + varianza_inicial)
+    
+    # M-Step: Actualización de parámetros
+    media_actualizada <- suma_esperada / num_total
+    varianza_actualizada <- suma_cuadrados_esperada / num_total - media_actualizada^2
+    
+    # Actualizar parámetros
+    media_inicial <- media_actualizada
+    varianza_inicial <- varianza_actualizada
+    
+    # Calcular log-verosimilitud con las nuevas estimaciones
+    log_verosimilitud_actual <- log_verosimilitud(datos_observados, media_inicial, varianza_inicial)
+    
+    # Imprimir valores actuales de los parámetros y log-verosimilitud
+    cat("Media estimada:", media_inicial, "Varianza estimada:", varianza_inicial, "Log-verosimilitud:", log_verosimilitud_actual, "\n")
+    
+    # Verificar convergencia
+    if (abs(log_verosimilitud_anterior - log_verosimilitud_actual) < 0.0001) break
+    
+    # Actualizar log-verosimilitud anterior
+    log_verosimilitud_anterior <- log_verosimilitud_actual
+  }
+  
+  # Devolver los valores estimados de los parámetros
+  return(c(media_estimada = media_inicial, varianza_estimada = varianza_inicial))
+}
+
+# Ejecutar la función EM con los valores iniciales
+resultado <- em_norm(datos, media_inicial, varianza_inicial)
+print(resultado)
+```
+
+```{r}
+set.seed(0) 
+
+# Generar datos con valores faltantes o latentes
+datos = rnorm(200, mean = 5, sd = 1) 
+datos[160:200] <- NA #Aqui le asigno los NA
+
+# Variables para datos observados y faltantes
+datos_observados <- datos[!is.na(datos)] # Datos observados (sin NA), el "!" es la negación lógica
+datos_faltantes <- datos[is.na(datos)] # Datos faltantes (NA)
+
+# Inicialización de valores
+num_observados <- length(datos_observados) # Número de observaciones disponibles (basicamente es un subconjunto)
+media_inicial <- mean(datos_observados) # Media de los datos observados
+varianza_inicial <- var(datos_observados) * (num_observados - 1) / num_observados # Varianza ajustada
+
+
+
+# Función EM para datos normales
+em_norm <- function(datos, media_inicial, varianza_inicial) {
+  datos_observados <- datos[!is.na(datos)]  # Valores observados
+  num_total <- length(datos)  # Longitud total de datos
+  num_observados <- length(datos_observados)  # Número de observaciones disponibles
+  
+  # Función para calcular la log-verosimilitud
+  log_verosimilitud <- function(y, mu, sigma2) {
+    -0.5 * length(y) * log(2 * pi * sigma2) - 0.5 * sum((y - mu)^2) / sigma2
+  }
+  
+  # Calcular log-verosimilitud con los valores iniciales
+  log_verosimilitud_anterior <- log_verosimilitud(datos_observados, media_inicial, varianza_inicial)
+  
+  
+  
+#Esta es la iteración del Algoritmo
+  repeat {
+    # E-Step: Esperanza condicional
+    suma_esperada <- sum(datos_observados) + (num_total - num_observados) * media_inicial
+    suma_cuadrados_esperada <- sum(datos_observados^2) + (num_total - num_observados) * (media_inicial^2 + varianza_inicial)
+    
+    # M-Step: Actualización de parámetros
+    media_actualizada <- suma_esperada / num_total
+    varianza_actualizada <- suma_cuadrados_esperada / num_total - media_actualizada^2
+    
+    # Actualizar parámetros
+    media_inicial <- media_actualizada
+    varianza_inicial <- varianza_actualizada
+    
+    # Calcular log-verosimilitud con las nuevas estimaciones
+    log_verosimilitud_actual <- log_verosimilitud(datos_observados, media_inicial, varianza_inicial)
+    
+    # Imprimir valores actuales de los parámetros y log-verosimilitud
+    cat("Media estimada:", media_inicial, "Varianza estimada:", varianza_inicial, "Log-verosimilitud:", log_verosimilitud_actual, "\n")
+    
+    # Verificar convergencia
+    if (abs(log_verosimilitud_anterior - log_verosimilitud_actual) < 0.0001) break
+    
+    # Actualizar log-verosimilitud anterior
+    log_verosimilitud_anterior <- log_verosimilitud_actual
+  }
+  
+  # Devolver los valores estimados de los parámetros
+  return(c(media_estimada = media_inicial, varianza_estimada = varianza_inicial))
+}
+
+# Ejecutar la función EM con los valores iniciales
+resultado <- em_norm(datos, media_inicial, varianza_inicial)
+print(resultado)
+```
+
+## ¿En que otros problemas se ocupa? {.smaller}
+
+-   En problemas con más de una Distribución
+
+-   **Mixturas Gaussiana (Encontrar a que distribucion pertenecen los datos)**
+
+    -   ¿Se podría trabajar como una Mezclas de Variables Aleatorias?
+
+    -   ¿Guarda relación con los métodos de composición? Spoiler... si!
+
+-   Modelos ocultos de Márkov (Determinar los parámetros desconocidos)
+
+-   En problemas de optimización de análisis numérico
+
+    -   Tiempos de ejecución
+
+    -   Convergencia
+
+    -   Referencias
+
+## Mixtura Gaussiana y library(mclust) {.smaller}
+
+::: columns
+::: {.column width="30%"}
+``` r
+
+library(mclust)  # Para ajuste de mezclas gaussianas
+library(ggplot2) 
+library(dplyr)  
+
+set.seed(123)
+n = 3000
+mu1 = -3  
+mu2 = 0   
+mu3 = 3   
+sigma1 = 0.5  
+sigma2 = 1.0  
+sigma3 = 0.7  
+
+# Generar datos a partir de tres distribuciones gaussianas
+x1 = rnorm(n/3, mean = mu1, sd = sigma1)
+x2 = rnorm(n/3, mean = mu2, sd = sigma2)
+x3 = rnorm(n/3, mean = mu3, sd = sigma3)
+
+
+data <- c(x1, x2, x3)
+df <- data.frame(data = data)
+
+#Ajustar una mezcla de gaussianas usando el algoritmo EM
+modelo_em = Mclust(data, G = 3)  # Especificar que queremos ajustar una mezcla de 3 gaussianas(G=K en la literatura)
+
+#Obtener las densidades ajustadas de cada componente
+densidades = data.frame(
+  x = seq(min(data), max(data), length.out = 1000)
+)
+```
+:::
+
+::: {.column width="60%"}
+![](ef3579f1-b342-4e74-8d37-41c1c8d5c103.png)
+:::
+:::
+
+## Referencias {.smaller}
+
+Rizzo, M. L. (2019). *Statistical computing with R, second edition* (2a ed.). Chapman & Hall/CRC. https://doi.org/10.1201/9780429192760
+
+Dempster, A. P., Laird, N. M., & Rubin, D. B. (1977). Maximum likelihood from incomplete data via the EM algorithm. *Journal of the Royal Statistical Society*, *39*(1), 1–38. http://www.jstor.org/stable/2984875
+
+[Curso Simulación Estadística](https://franplaza.github.io/courses/Simulation/Simulacion_2_Generando_variables_aleatorias.html#/m%C3%A9todo-de-composici%C3%B3n-sumas-y-mixturas "2024 -1s")
